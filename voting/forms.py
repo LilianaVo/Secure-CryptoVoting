@@ -3,20 +3,27 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
 
+# ---------------------------------------------------------
+# 1. FORMULARIO DE REGISTRO (CustomRegisterForm)
+# ---------------------------------------------------------
+# No usamos el formulario por defecto de Django porque queremos:
+# A) Usar el Email como nombre de usuario.
+# B) Forzar contraseñas más seguras manualmente.
 class CustomRegisterForm(forms.ModelForm):
     email = forms.EmailField(
         required=True, 
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'nombre@ejemplo.com'}),
         label="Correo Electrónico"
     )
-    # --- AQUÍ ESTÁ EL CAMBIO ---
+    
+    # --- CONFIGURACIÓN DE CONTRASEÑA ---
     password = forms.CharField(
-        min_length=8,  # <--- ESTO FALTABA: Fuerza el mínimo de 8 caracteres
+        min_length=8,  # <--- REGLA DE SEGURIDAD: Longitud mínima obligatoria
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': '********'}),
         label="Contraseña",
         error_messages={'min_length': 'La contraseña debe tener al menos 8 caracteres.'}
     )
-    # ---------------------------
+    
     confirm_password = forms.CharField(
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': '********'}),
         label="Confirmar Contraseña"
@@ -24,11 +31,14 @@ class CustomRegisterForm(forms.ModelForm):
 
     class Meta:
         model = User
+        # Solo le pedimos estos dos datos al usuario (el resto se llena automático)
         fields = ['email', 'password']
 
     def clean_email(self):
         """
+        VALIDACIÓN PERSONALIZADA:
         Verifica que el correo no exista ya en la base de datos.
+        Evita duplicados antes de intentar guardar.
         """
         email = self.cleaned_data.get('email')
         if email and User.objects.filter(username=email).exists():
@@ -36,7 +46,10 @@ class CustomRegisterForm(forms.ModelForm):
         return email
 
     def clean(self):
-        """Verifica que las contraseñas coincidan."""
+        """
+        VALIDACIÓN GENERAL:
+        Verifica que las dos contraseñas ingresadas sean idénticas.
+        """
         cleaned_data = super().clean()
         password = cleaned_data.get("password")
         confirm_password = cleaned_data.get("confirm_password")
@@ -48,11 +61,15 @@ class CustomRegisterForm(forms.ModelForm):
 
     def save(self, commit=True):
         """
-        Guarda el usuario usando el email como username.
+        GUARDADO PERSONALIZADO:
+        Django obliga a tener un 'username'. Aquí copiamos el email al campo username
+        para que el usuario no tenga que inventarse un apodo.
         """
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-        user.username = self.cleaned_data['email']
+        user.username = self.cleaned_data['email'] # Truco: Username = Email
+        
+        # set_password se encarga de HASHING (encriptar la contraseña para no guardarla en texto plano)
         user.set_password(self.cleaned_data["password"])
         
         if commit:
@@ -60,7 +77,11 @@ class CustomRegisterForm(forms.ModelForm):
         return user
 
 
+# ---------------------------------------------------------
+# 2. FORMULARIO DE INICIO DE SESIÓN (CustomLoginForm)
+# ---------------------------------------------------------
 class CustomLoginForm(AuthenticationForm):
+    # Aunque internamente Django usa 'username', en la etiqueta mostramos "Correo Electrónico"
     username = forms.CharField(
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'nombre@ejemplo.com'}),
         label="Correo Electrónico"
@@ -72,7 +93,8 @@ class CustomLoginForm(AuthenticationForm):
 
     def clean(self):
         """
-        Autentica usando el email como username.
+        LÓGICA DE AUTENTICACIÓN:
+        Verifica si las credenciales son reales.
         """
         username = self.cleaned_data.get('username')
         password = self.cleaned_data.get('password')
@@ -92,6 +114,11 @@ class CustomLoginForm(AuthenticationForm):
         
         return self.cleaned_data
     
+# ---------------------------------------------------------
+# 3. FORMULARIO DE VERIFICACIÓN DE LLAVE (KeyCheckForm)
+# ---------------------------------------------------------
+# Este es un formulario simple para subir archivos. 
+# No guarda nada en la BD, solo sirve para pasar el archivo a la vista 'check_key_status'.
 class KeyCheckForm(forms.Form):
     private_key = forms.FileField(
         label="Selecciona tu archivo de Llave Privada (.key)",

@@ -1,44 +1,52 @@
 """
 URL configuration for voting_project project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 from django.contrib.auth import views as auth_views
-from voting import views as voting_views # Importamos la carpeta views de la app voting
+from voting import views as voting_views # Importamos las funciones (vistas) de tu app de votación
 
 urlpatterns = [
-    # 1. URL de Administración de Django
+    # ---------------------------------------------------------
+    # 1. PANEL DE ADMINISTRACIÓN
+    # ---------------------------------------------------------
+    # Esta ruta habilita el panel de superusuario de Django (ej: sitio.com/admin)
     path('admin/', admin.site.urls),
 
-    # 2. RUTAS DE AUTENTICACIÓN PERSONALIZADAS
+    # ---------------------------------------------------------
+    # 2. AUTENTICACIÓN (ENTRADA Y SALIDA)
+    # ---------------------------------------------------------
+    # Conecta la URL '/login/' con la función personalizada 'login_view' en views.py
     path('login/', voting_views.login_view, name='login'),
+    
+    # Para cerrar sesión, usamos la vista genérica de Django, pero le indicamos
+    # específicamente qué plantilla (HTML) mostrar cuando el usuario salga.
     path('logout/', auth_views.LogoutView.as_view(template_name='logged_out.html'), name='logout'),
     
-    # NUEVA RUTA DE REGISTRO
-    path('register/', voting_views.register_view, name='register'), # <-- NUEVA RUTA
+    # ---------------------------------------------------------
+    # 3. REGISTRO DE NUEVOS USUARIOS
+    # ---------------------------------------------------------
+    # Ruta dedicada para que nuevos usuarios creen su cuenta (llama a 'register_view')
+    path('register/', voting_views.register_view, name='register'), 
     
-    # Incluimos el resto de las rutas de autenticación (ej. reseteo de contraseña)
+    # Esta línea mágica incluye rutas predefinidas de Django para cosas como
+    # recuperar contraseña o cambiarla, para no tener que escribirlas desde cero.
     path('', include('django.contrib.auth.urls')), 
 
-    # 3. Mapeo de la aplicación de Votación
+    # ---------------------------------------------------------
+    # 4. CONEXIÓN CON LA APP 'VOTING'
+    # ---------------------------------------------------------
+    # Aquí le decimos a Django: "Si la URL empieza con 'voting/', deja de mirar aquí 
+    # y vete a buscar al archivo urls.py que está DENTRO de la carpeta voting".
+    # Esto mantiene el proyecto ordenado.
     path('voting/', include('voting.urls')),
     
-    # 4. RUTA RAÍZ (/)
-    path('', voting_views.index_view, name='home'), # Manda a la portada
-    
+    # ---------------------------------------------------------
+    # 5. PÁGINA DE INICIO (RAÍZ)
+    # ---------------------------------------------------------
+    # Cuando alguien entra al dominio principal (sin nada más), 
+    # lo enviamos directamente a la función 'index_view' (tu portada).
+    path('', voting_views.index_view, name='home'), 
 ]

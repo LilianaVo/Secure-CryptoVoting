@@ -12,7 +12,7 @@ import re
 from django.conf import settings 
 
 # --- IMPORTACIONES LOCALES ---
-# Asegúrate de que crypto_utils y models existan
+# Traigo mis herramientas de seguridad y mis modelos de base de datos
 from .crypto_utils import generate_rsa_keys, sign_vote, encrypt_vote_aes, verify_signature
 from .models import VoterProfile, Vote 
 # IMPORTANTE: Importamos los nuevos formularios que creamos en forms.py
@@ -20,9 +20,15 @@ from .forms import CustomRegisterForm, CustomLoginForm, KeyCheckForm
 
 from Crypto.PublicKey import RSA
 
-# --- Funciones Auxiliares (Para el Dashboard) ---
+# ---------------------------------------------------------
+# FUNCIONES AUXILIARES (Procesamiento de Texto)
+# ---------------------------------------------------------
+
 def parse_vote_content(vote_option):
-    """Extrae las respuestas P1 a P4 de la cadena de voto (P#:VALOR)."""
+    """
+    Convierte el texto crudo del voto (ej: 'P1:ALTO|P2:FACIL') 
+    en un diccionario de Python fácil de leer.
+    """
     results = {}
     # Patrón: (P#):(VALOR)
     matches = re.findall(r'(P\d+):([A-Z0-9\-]+)', vote_option)
@@ -31,7 +37,10 @@ def parse_vote_content(vote_option):
     return results
 
 def get_legible_label(key, value):
-    """Mapea valores de código a etiquetas legibles."""
+    """
+    Traduce los códigos internos (ej: 'RAPIDO') a texto legible para humanos (ej: 'Muy rápido').
+    Esto se usa para mostrar gráficos y tablas bonitas.
+    """
     if key == 'P1': 
         return {'ALTO': 'Alto', 'MEDIO': 'Medio', 'BAJO': 'Bajo'}.get(value, value)
     if key == 'P2': 
@@ -44,11 +53,14 @@ def get_legible_label(key, value):
 # --- Fin de Funciones Auxiliares ---
 
 
-# --- VISTA DE PORTADA (index_view) ---
+# ---------------------------------------------------------
+# VISTAS DE NAVEGACIÓN BÁSICA
+# ---------------------------------------------------------
+
 def index_view(request):
     """Renderiza la portada o redirige a la guía."""
     if request.user.is_authenticated:
-        # CAMBIO: Si entra al inicio y ya es usuario, va a la guía
+        # CAMBIO: Si entra al inicio y ya es usuario, va a la guía para no perder tiempo.
         return redirect('voting:guide') 
         
     context = {
@@ -58,9 +70,8 @@ def index_view(request):
     return render(request, 'voting/index.html', context)
 
 
-# --- VISTA DEDICADA DE CRÉDITOS ---
 def credits_view(request):
-    """Renderiza la página dedicada a los créditos del proyecto."""
+    """Muestra la página de créditos con los datos de la materia y alumnos."""
     context = {
         'github_url': getattr(settings, 'GITHUB_REPO_URL', '#'), 
         'materia': 'Criptografía',
@@ -73,14 +84,16 @@ def credits_view(request):
     return render(request, 'voting/credits.html', context)
 
 
-# --- NUEVA VISTA DE LOGIN (Soluciona el fallo de seguridad) ---
-# En voting/views.py
+# ---------------------------------------------------------
+# VISTAS DE AUTENTICACIÓN (Login / Registro)
+# ---------------------------------------------------------
 
 def login_view(request):
     """
-    Maneja el inicio de sesión y fuerza la redirección a la GUÍA.
+    Maneja el inicio de sesión.
+    Si el usuario se loguea bien, lo forzamos a ir a la GUÍA.
     """
-    # 1. Si ya está logueado, mándalo a la guía (evita bucles)
+    # 1. Si ya está dentro, mándalo a la guía (evita bucles).
     if request.user.is_authenticated:
         return redirect('voting:guide') 
 
@@ -92,8 +105,8 @@ def login_view(request):
             messages.success(request, f"Bienvenido de nuevo.")
             
             # --- CAMBIO CRÍTICO ---
-            # NO uses 'next'. Forzamos la redirección a 'voting:guide'
-            # Esto evita que si intentaste entrar a /vote/, te lleve allí.
+            # Ignoramos a dónde quería ir el usuario y lo mandamos a la guía
+            # para asegurarnos que lea las instrucciones.
             return redirect('voting:guide') 
             
         else:
@@ -105,23 +118,22 @@ def login_view(request):
 
 
 def logout_view(request):
-    """Cierra la sesión del usuario de forma segura."""
+    """Cierra la sesión y limpia las cookies del usuario."""
     logout(request)
     messages.info(request, "Has cerrado sesión exitosamente.")
     return redirect('login')
 
 
-# --- VISTA DE REGISTRO MODIFICADA (register_view) ---
 def register_view(request):
     """
-    Maneja el registro usando el nuevo formulario CustomRegisterForm.
-    Valida correos, bloquea dominios temporales y caracteres raros.
+    Registra un nuevo usuario.
+    Aquí es donde validamos que el correo sea real y no sea temporal.
     """
     if request.user.is_authenticated:
         return redirect('voting:vote_submit')
 
     if request.method == 'POST':
-        # Usamos CustomRegisterForm en lugar de UserCreationForm
+        # Usamos CustomRegisterForm (definido en forms.py) que tiene las reglas de validación.
         form = CustomRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
@@ -132,35 +144,38 @@ def register_view(request):
     else:
         form = CustomRegisterForm()
         
-    # Renderiza el template que está en templates/register.html
     return render(request, 'register.html', {'form': form})
 
 
-# --- Vista para la Generación de Llaves (key_generation_view) ---
+# ---------------------------------------------------------
+# GESTIÓN DE LLAVES (PKI)
+# ---------------------------------------------------------
+
 @login_required
 def key_generation_view(request):
     """
-    Genera el par de llaves RSA. Permite la regeneración SOLO si el usuario
-    NO ha emitido su voto previamente.
+    Genera el par de llaves RSA (Pública y Privada).
     """
     profile = get_object_or_404(VoterProfile, user=request.user)
 
-    # 🛑 RESTRICCIÓN DE INTEGRIDAD CRIPTOGRÁFICA 🛑
+    # 🛑 RESTRICCIÓN DE INTEGRIDAD 🛑
+    # Si el usuario ya votó, NO le dejo generar llaves nuevas.
+    # Esto evita que alguien repudie su voto anterior diciendo "esa no era mi llave".
     if profile.has_voted:
         messages.error(request, 
                        "Tu voto ya ha sido emitido: No es posible generar una nueva llave pública una vez que se ha registrado un voto.")
         return redirect('voting:verification_page') 
 
-    # Si el usuario NO ha votado:
+    # Si el usuario es nuevo o no ha votado:
     if request.method == 'POST':
+        # Llamamos a la función matemática para crear las llaves
         public_key_pem, private_key_pem = generate_rsa_keys()
         
-        # Guardar la nueva llave pública
+        # Guardamos la PÚBLICA en la base de datos (la identidad visible)
         profile.public_key = public_key_pem
         profile.save()
         
-        # Usamos el username (que ahora es el email) para el nombre del archivo, 
-        # limpiando caracteres para que sea un nombre de archivo válido.
+        # Preparamos la PRIVADA para descargarla como archivo (el secreto del usuario)
         safe_filename = "".join([c for c in request.user.username if c.isalpha() or c.isdigit() or c==' ']).rstrip()
         filename = f"{safe_filename}_private.key"
         
@@ -173,12 +188,18 @@ def key_generation_view(request):
     return render(request, 'voting/key_generation.html', {'profile': profile})
 
 
-# --- Vista de Emisión de Voto y Firma (vote_submission_view) ---
+# ---------------------------------------------------------
+# PROCESO DE VOTACIÓN (NÚCLEO DEL SISTEMA)
+# ---------------------------------------------------------
+
 @login_required
 def vote_submission_view(request):
-    """Procesa el voto, genera la firma digital y lo registra."""
+    """
+    Recibe el voto, verifica la llave, FIRMA y ENCRIPTA.
+    """
     profile = get_object_or_404(VoterProfile, user=request.user)
     
+    # 1. Validaciones previas
     if profile.has_voted:
         messages.warning(request, "Ya has votado. No puedes votar de nuevo.")
         return redirect('voting:success_page') 
@@ -189,11 +210,12 @@ def vote_submission_view(request):
 
 
     if request.method == 'POST':
-        # CAPTURA DE LAS 4 PREGUNTAS
+        # 2. Capturamos lo que el usuario eligió
         pregunta_1 = request.POST.get('pregunta_1')
         pregunta_2 = request.POST.get('pregunta_2')
         pregunta_3 = request.POST.get('pregunta_3')
         pregunta_4 = request.POST.get('pregunta_4')
+        # Capturamos el archivo de la llave privada que subió
         private_key_file = request.FILES.get('private_key') 
 
         if not all([pregunta_1, pregunta_2, pregunta_3, pregunta_4]) or not private_key_file:
@@ -201,33 +223,43 @@ def vote_submission_view(request):
             return render(request, 'voting/vote_form.html', {'profile': profile})
 
         try:
+            # Leemos el contenido de la llave privada subida
             private_key_pem = private_key_file.read().decode('utf-8')
 
-            # CONCATENACIÓN DE LAS 4 RESPUESTAS
+            # 3. Creamos el "paquete" de voto concatenando las respuestas
             vote_content = (
                 f"USUARIO:{request.user.username}|P1:{pregunta_1}|P2:{pregunta_2}|P3:{pregunta_3}|P4:{pregunta_4}"
             )
 
-            # Lógica de firma y verificación
+            # 4. FIRMA DIGITAL (Autenticación)
+            # Usamos la llave privada subida para firmar el contenido.
             signature_hex = sign_vote(vote_content, private_key_pem)
             
+            # 5. VERIFICACIÓN INMEDIATA
+            # Comprobamos que la llave privada que subió coincide con la pública que tenemos guardada.
             if not verify_signature(vote_content, signature_hex, profile.public_key):
                  messages.error(request, "La llave privada subida no corresponde a su llave pública registrada.")
                  return redirect(reverse('voting:vote_submit')) 
 
+            # 6. ENCRIPTACIÓN (Confidencialidad)
+            # Encriptamos el voto con AES para que nadie pueda leerlo en la BD.
             encrypted_vote_hex = encrypt_vote_aes(vote_content)
 
+            # 7. GUARDADO EN BASE DE DATOS
+            # Usamos transaction.atomic para asegurar que se guarde todo o nada.
             with transaction.atomic():
                 Vote.objects.create(
                     voter=profile,
-                    option=vote_content, 
-                    digital_signature=signature_hex,
-                    encrypted_vote=encrypted_vote_hex
+                    option=vote_content, # Guardamos el texto plano (opcional según requisitos)
+                    digital_signature=signature_hex, # Guardamos la firma
+                    encrypted_vote=encrypted_vote_hex # Guardamos el cifrado
                 )
+                # Marcamos al usuario como "ya votó"
                 profile.has_voted = True
                 profile.save()
             
             messages.success(request, "¡Voto firmado y procesado con éxito!")
+            # Guardamos la firma en sesión para mostrarla en la pantalla de éxito
             request.session['last_signature'] = signature_hex
             return redirect('voting:success_page')
 
@@ -238,18 +270,19 @@ def vote_submission_view(request):
     return render(request, 'voting/vote_form.html', {'profile': profile})
 
 
-# --- VISTA DE PÁGINA DE ÉXITO (success_page) ---
 @login_required
 def success_page(request):
-    """Muestra la página de éxito con el comprobante digital."""
+    """Muestra el comprobante digital después de votar."""
     signature = request.session.pop('last_signature', "Comprobante no disponible.")
-    
     return render(request, 'voting/success.html', {'signature': signature})
 
 
-# --- LÓGICA DE CONTEO PARA GRÁFICOS ---
+# ---------------------------------------------------------
+# VISTAS DE RESULTADOS Y AUDITORÍA
+# ---------------------------------------------------------
+
 def get_counts_for_question(question_key, votes):
-    """Función auxiliar para contar votos por pregunta y preparar el JSON."""
+    """Cuenta cuántos votos tiene cada opción para generar gráficos."""
     results = []
     for vote in votes:
         parsed_data = parse_vote_content(vote.option)
@@ -264,14 +297,16 @@ def get_counts_for_question(question_key, votes):
         'counts': json.dumps(list(counts.values()))
     }
 
-# --- VISTA DE TABLERO PÚBLICO (results_dashboard_view) ---
 @login_required 
 def results_dashboard_view(request):
-    """Muestra los gráficos de resultados (Tablero Público)."""
+    """
+    Tablero Público: Muestra estadísticas generales.
+    Cualquier usuario logueado puede ver esto.
+    """
     is_admin = request.user.is_staff
     all_votes = Vote.objects.all().select_related('voter').order_by('id') 
     
-    # Datos para los 4 gráficos
+    # Preparamos datos para los 4 gráficos
     data_p1 = get_counts_for_question('P1', all_votes)
     data_p2 = get_counts_for_question('P2', all_votes)
     data_p3 = get_counts_for_question('P3', all_votes)
@@ -294,10 +329,12 @@ def results_dashboard_view(request):
     return render(request, 'voting/results_dashboard.html', context)
 
 
-# --- NUEVA VISTA DE AUDITORÍA DETALLADA (audit_view) ---
 @login_required
 def audit_view(request):
-    """Muestra el registro inmutable de auditoría completo (Solo para staff/admin)."""
+    """
+    Auditoría Detallada: Muestra tabla cruda con firmas y encriptación.
+    SOLO accesible para administradores (Staff).
+    """
     if not request.user.is_staff:
         messages.error(request, "Acceso Denegado: Solo el personal de administración puede acceder a la auditoría.")
         return redirect('voting:results_dashboard')
@@ -311,8 +348,8 @@ def audit_view(request):
         processed_votes.append({
             'id': vote.id,
             'voter_username': vote.voter.user.username,
-            'encrypted_vote': vote.encrypted_vote,
-            'digital_signature': vote.digital_signature,
+            'encrypted_vote': vote.encrypted_vote,   # Mostramos el hash AES
+            'digital_signature': vote.digital_signature, # Mostramos la firma RSA
             'timestamp': vote.timestamp,
             'P1': get_legible_label('P1', parsed_data.get('P1', 'N/A')),
             'P2': get_legible_label('P2', parsed_data.get('P2', 'N/A')),
@@ -330,10 +367,11 @@ def audit_view(request):
     return render(request, 'voting/results_dashboard.html', context)
 
 
-# --- VISTA DE VERIFICACIÓN INDIVIDUAL (verification_page) ---
 @login_required
 def verification_page(request):
-    """Muestra la tabla de verificación (hash y firma) del voto del usuario actual."""
+    """
+    Verificación Personal: Muestra al usuario SU propio historial y firmas.
+    """
     user_votes = Vote.objects.filter(voter__user=request.user).select_related('voter').order_by('-timestamp')
     
     context = {
@@ -345,22 +383,22 @@ def verification_page(request):
     
     return render(request, 'voting/results_dashboard.html', context)
 
-# --- VISTA DE GUÍA DE USUARIO ---
 def guide_view(request):
-    """Renderiza la guía paso a paso de cómo votar."""
+    """Muestra la guía de usuario."""
     return render(request, 'voting/guide.html')
 
-# --- VISTA DE VALIDACIÓN DE ESTADO DE LLAVE (check_key_status) ---
+# ---------------------------------------------------------
+# VALIDACIÓN DE ARCHIVOS DE LLAVE (Herramienta Extra)
+# ---------------------------------------------------------
+
 @login_required
 def check_key_status(request):
     """
-    Permite al usuario subir su llave para verificar:
-    1. Si es una llave RSA válida.
-    2. Si corresponde a su usuario.
-    3. Si ya fue utilizada para votar.
+    Permite al usuario subir un archivo .key para ver si funciona.
+    No guarda nada, solo verifica.
     """
     profile = get_object_or_404(VoterProfile, user=request.user)
-    key_status = None # Puede ser: 'valid_ready', 'valid_used', 'invalid_format', 'mismatch', 'no_key_registered'
+    key_status = None # Estados posibles: 'valid_ready', 'valid_used', 'invalid_format', etc.
     
     if request.method == 'POST':
         form = KeyCheckForm(request.POST, request.FILES)
@@ -375,13 +413,12 @@ def check_key_status(request):
                 if not profile.public_key:
                     key_status = 'no_key_registered'
                 else:
-                    # 3. Derivamos la pública de la privada subida y comparamos (Detectar si es de otro usuario)
-                    # Normalizamos quitando espacios en blanco extras
+                    # 3. Generamos la pública desde la privada subida y comparamos con la guardada
                     uploaded_public_pem = private_key_obj.publickey().export_key('PEM').decode('utf-8').strip()
                     stored_public_pem = profile.public_key.strip()
                     
                     if uploaded_public_pem != stored_public_pem:
-                        key_status = 'mismatch' # Es una llave válida, pero no es la de este usuario
+                        key_status = 'mismatch' # La llave sirve, pero no es la tuya
                     else:
                         # 4. Verificar si ya se usó
                         if profile.has_voted:
@@ -390,7 +427,7 @@ def check_key_status(request):
                             key_status = 'valid_ready'
 
             except (ValueError, IndexError, TypeError) as e:
-                # Si RSA.import_key falla, el archivo no es una llave válida
+                # Si RSA.import_key falla, el archivo es basura
                 key_status = 'invalid_format'
     else:
         form = KeyCheckForm()
