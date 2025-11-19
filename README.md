@@ -44,55 +44,57 @@ Para una persona que **quiere usar tu proyecto desde VS Code**, estos son **los 
 
 ---
 
-# ✅ ¿Qué necesita descargar/instalar primero?
+# ✅ ¿Qué necesita descargar para usar Django en VS Code?
 
-## 1️⃣ **Instalar VS Code**
+## 1️⃣ **Instalar Python 3.10 o superior** (obligatorio)
 
-Descargar desde la página oficial:
+Django funciona en Python, así que esto es lo primero.
+[https://www.python.org/downloads/](https://www.python.org/downloads/)
+
+> *Importante:* marcar la opción **"Add Python to PATH"** durante la instalación.
+
+---
+
+## 2️⃣ **Instalar VS Code**
+
+Editor recomendado para trabajar con Django.
 [https://code.visualstudio.com/](https://code.visualstudio.com/)
 
 ---
 
-## 2️⃣ **Instalar Python 3.10 o superior**
+## 3️⃣ **Instalar la extensión de Python para VS Code**
 
-El proyecto usa Python, así que es indispensable instalarlo:
-[https://www.python.org/downloads/](https://www.python.org/downloads/)
+En VS Code → pestaña **Extensions** → buscar:
 
-> Asegúrate de marcar **“Add Python to PATH”** durante la instalación (muy importante).
+🟦 **Python (Microsoft)**
+Instalarla.
+
+Esta extensión permite:
+
+* Ejecutar Python
+* Reconocer entornos virtuales
+* Depurar el proyecto
+* Dar formato y autocompletado
 
 ---
 
-## 3️⃣ **Instalar Git**
+## 4️⃣ **Instalar Git (opcional pero recomendado)**
 
-Es necesario para descargar el repositorio desde GitHub.
+Necesario solo si el proyecto se descarga desde GitHub.
+
 [https://git-scm.com/downloads](https://git-scm.com/downloads)
 
 ---
 
-## 4️⃣ **Clonar el proyecto dentro de VS Code**
+# 🔧 ¿Qué necesita hacer para usar Django dentro del proyecto?
 
-En VS Code:
-
-**View → Command Palette → Git: Clone**
-
-Pegar tu repo:
-
-```
-https://github.com/LilianaVo/Sistema-Votacion-Seguro-CryptoVoting.git
-```
-
-O con terminal integrada:
-
-```bash
-git clone https://github.com/LilianaVo/Sistema-Votacion-Seguro-CryptoVoting.git
-cd Sistema-Votacion-Seguro-CryptoVoting
-```
+Django NO se instala globalmente, sino **dentro del proyecto** con un *entorno virtual*.
 
 ---
 
-## 5️⃣ **Crear un entorno virtual (venv)**
+## 5️⃣ **Crear un entorno virtual**
 
-Necesario para instalar las librerías sin afectar el sistema.
+En la terminal de VS Code:
 
 ```bash
 python -m venv venv
@@ -100,13 +102,13 @@ python -m venv venv
 
 Activar:
 
-### Windows:
+### En Windows:
 
 ```bash
 .\venv\Scripts\activate
 ```
 
-### Mac / Linux:
+### En Mac/Linux:
 
 ```bash
 source venv/bin/activate
@@ -114,28 +116,27 @@ source venv/bin/activate
 
 ---
 
-## 6️⃣ **Instalar las dependencias**
+## 6️⃣ **Instalar Django**
 
-Estas vienen en `requirements.txt`:
+(No necesitas instalarlo manualmente. Viene en el proyecto.)
+
+Solo hay que instalar todas las dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+Esto incluye:
 
-## 7️⃣ **Crear archivo `.env`**
-
-En el mismo nivel que `manage.py` crear:
-
-```ini
-DEBUG=True
-SECRET_KEY=escribe_una_clave_segura
-```
+* Django
+* PyCryptodome
+* WhiteNoise
+* Gunicorn (prod)
+* etc.
 
 ---
 
-## 8️⃣ **Inicializar la base de datos**
+## 7️⃣ **Aplicar migraciones**
 
 ```bash
 python manage.py migrate
@@ -143,7 +144,7 @@ python manage.py migrate
 
 ---
 
-## 9️⃣ **Crear un superusuario (admin)**
+## 8️⃣ **Crear usuario admin**
 
 ```bash
 python manage.py createsuperuser
@@ -151,13 +152,13 @@ python manage.py createsuperuser
 
 ---
 
-## 🔟 Ejecutar el servidor
+## 9️⃣ **Ejecutar Django**
 
 ```bash
 python manage.py runserver
 ```
 
-Acceder en:
+Abrir:
 👉 [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 ---
