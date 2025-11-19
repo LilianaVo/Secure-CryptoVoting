@@ -227,8 +227,10 @@ exit()
 
 # 👥 Desarrollado por
 
-* **Roja Mares Luis Iván**
+* **Rojas Mares Luis Iván**
 * **Lee Obando Ileana Verónica**
+
+# 📚 Datos de la materia
 
 * **Materia:** Criptografía
 * **Profesor:** Dr. Alfonso Francisco De Abiega L Eglisse
