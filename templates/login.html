@@ -11,6 +11,22 @@
         background-color: transparent !important; /* Barra transparente en login */
         box-shadow: none !important;
     }
+    /* Clase para que el ícono del ojo flote dentro del input */
+    .password-wrapper {
+        position: relative;
+    }
+    .toggle-password {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        z-index: 10;
+        color: #6c757d;
+    }
+    .toggle-password:hover {
+        color: #2979ff;
+    }
 </style>
 {% endblock extra_head %}
 
@@ -38,7 +54,10 @@
                 
                 <div class="mb-4">
                     <label for="id_password" class="form-label fw-semibold">Contraseña:</label>
-                    <input type="password" name="password" id="id_password" class="form-control form-control-lg rounded-pill" required placeholder="Contraseña Segura">
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="id_password" class="form-control form-control-lg rounded-pill" required placeholder="Contraseña Segura" style="padding-right: 45px;">
+                        <i class="bi bi-eye toggle-password" onclick="togglePassword('id_password', this)"></i>
+                    </div>
                 </div>
 
                 <div class="d-grid gap-2">
@@ -53,4 +72,19 @@
         </div>
     </div>
 </div>
+
+<script>
+    function togglePassword(fieldId, icon) {
+        const field = document.getElementById(fieldId);
+        if (field.type === "password") {
+            field.type = "text";
+            icon.classList.remove("bi-eye");
+            icon.classList.add("bi-eye-slash"); // Cambia a ojo tachado
+        } else {
+            field.type = "password";
+            icon.classList.remove("bi-eye-slash");
+            icon.classList.add("bi-eye"); // Vuelve a ojo normal
+        }
+    }
+</script>
 {% endblock %}

@@ -16,8 +16,6 @@
                 <p class="small text-muted mb-4">Su perfil de votación criptográfica será creado automáticamente.</p>
             </div>
             
-            {# --- SECCIÓN DE MENSAJES ELIMINADA (Ahora se muestran solo arriba en base.html) --- #}
-
             {# Contenedor más estilizado para los requisitos #}
             <div class="alert alert-info border-info border-start border-5 rounded-3 ps-3 py-2 mb-4 d-flex align-items-center" role="alert">
                 <i class="bi bi-shield-lock-fill fs-4 text-info me-3"></i> 
@@ -50,6 +48,8 @@
                 {% for field in form %}
                     <div class="mb-3">
                         <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}:</label>
+                        
+                        {# Aquí renderizamos el campo, el script de abajo se encarga de ponerle el ojo si es contraseña #}
                         {{ field }} 
                         
                         {% if field.help_text %}
@@ -75,4 +75,58 @@
         </div>
     </div>
 </div>
+
+{# --- SCRIPT MAGICO PARA AGREGAR EL OJO A LOS CAMPOS DE PASSWORD --- #}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Buscar todos los inputs de tipo password
+        const passwordInputs = document.querySelectorAll('input[type="password"]');
+
+        passwordInputs.forEach(function(input) {
+            // 2. Crear el contenedor relativo para poder posicionar el icono
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            
+            // Insertar el wrapper antes del input y mover el input dentro
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+
+            // 3. Ajustar estilo del input para que el texto no choque con el ojo
+            input.style.paddingRight = '45px';
+
+            // 4. Crear el ícono del ojo
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-eye'; // Clase base de Bootstrap Icons
+            
+            // Estilos del icono para que flote a la derecha
+            icon.style.position = 'absolute';
+            icon.style.right = '15px';
+            icon.style.top = '50%';
+            icon.style.transform = 'translateY(-50%)';
+            icon.style.cursor = 'pointer';
+            icon.style.color = '#6c757d';
+            icon.style.zIndex = '10';
+
+            // Evento hover para feedback visual
+            icon.onmouseover = function() { this.style.color = '#2979ff'; };
+            icon.onmouseout = function() { this.style.color = '#6c757d'; };
+
+            // 5. La función de click para mostrar/ocultar
+            icon.onclick = function() {
+                if (input.type === "password") {
+                    input.type = "text";
+                    icon.classList.remove("bi-eye");
+                    icon.classList.add("bi-eye-slash");
+                } else {
+                    input.type = "password";
+                    icon.classList.remove("bi-eye-slash");
+                    icon.classList.add("bi-eye");
+                }
+            };
+
+            // Agregar el ícono al wrapper
+            wrapper.appendChild(icon);
+        });
+    });
+</script>
 {% endblock %}
