@@ -1,6 +1,3 @@
-¡Claro\! Tu `README.md` es muy completo y detallado. Lo que propongo es una **reestructuración** para mejorar la **claridad visual** y la **jerarquía de la información**, haciendo el contenido más accesible de un vistazo para un nuevo usuario, además de integrar la información de la URL de despliegue.
-
-Aquí tienes la versión mejorada, con un enfoque más directo en la propuesta de valor y las instrucciones:
 
 -----
 
@@ -170,8 +167,8 @@ gunicorn voting_project.wsgi:application
 
 ## 👥 Desarrollado por
 
-  * **Rojas Mares Luis Iván**
   * **Lee Obando Ileana Verónica**
+  * **Rojas Mares Luis Iván**
 
 ### 📚 Datos Académicos
 
@@ -182,4 +179,3 @@ gunicorn voting_project.wsgi:application
 
 -----
 
-¿Te gustaría que agregue algún otro detalle o sección, como una breve explicación de la lógica de cifrado/descifrado del voto?
