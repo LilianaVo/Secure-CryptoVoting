@@ -1,3 +1,4 @@
+
 <div align="center">
 
 # 🗳️ Secure Electronic Voting System (CryptoVoting)
@@ -115,3 +116,72 @@ Ensure you have the following installed:
 ### **Build Command**
 ```bash
 pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+
+```
+
+### **Start Command**
+
+```bash
+gunicorn voting_project.wsgi:application
+
+```
+
+---
+
+## 🔄 Maintenance: Quick System Reset
+
+> ⚠️ **Warning:** These commands will **delete all users** (except superusers) **and votes**. Backup data if necessary!
+
+1. **Open Django Shell:**
+```bash
+python manage.py shell
+
+```
+
+
+2. **Run Cleanup Scripts:**
+```python
+# A) Import models
+from django.contrib.auth.models import User
+from voting.models import Vote, VoterProfile
+
+# B) Delete non-superuser accounts
+User.objects.filter(is_superuser=False).delete()
+
+# C) Clear all votes and reset voting status
+Vote.objects.all().delete()
+VoterProfile.objects.update(has_voted=False)
+
+# D) Exit shell
+exit()
+
+```
+
+
+
+---
+
+## Academic Context
+
+This project was developed for the **Cryptography** course at the **National Autonomous University of Mexico (UNAM)**.
+
+| **Course Information** | **Details** |
+| --- | --- |
+| **University** | Universidad Nacional Autónoma de México (UNAM) |
+| **Faculty** | **Faculty of Engineering** |
+| **Course** | Cryptography |
+| **Professor** | Dr. Alfonso Francisco De Abiega L Eglisse |
+| **Group** | 02 |
+
+---
+
+## Contributors
+
+* **Lee Obando Ileana Verónica**
+* **Rojas Mares Luis Iván**
+
+---
+
+## 📄 License
+
+Distributed under the MIT License.
