@@ -22,7 +22,7 @@
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 The system is built on a **Hybrid Cryptographic Scheme** that ensures the integrity and confidentiality of the voting process:
 
@@ -66,7 +66,7 @@ Ensure you have the following installed:
 3.  **Python Extension**: Install `Python (Microsoft)` from the VS Code Marketplace.
 4.  **Git**: (Optional) [Download Here](https://git-scm.com/downloads).
 
-### 💻 Execution Steps
+### Execution Steps
 
 1.  **Clone the Repository**
     ```bash
